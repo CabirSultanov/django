@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Habr — Главная</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f4f6f8;
+        color: #222;
+        margin: 0;
+        padding: 0;
+      }
+      header {
+        background: #1e88e5;
+        color: #fff;
+        padding: 15px 30px;
+        text-align: center;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 28px;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+        padding: 40px 0;
+      }
+
+      .article {
+        background: #fff;
+        border-radius: 10px;
+        padding: 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        width: 600px;
+      }
+
+      .article img {
+        width: 100%;
+        max-height: 220px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin: 15px 0;
+      }
+
+      .article h2 {
+        margin: 10px 0 5px;
+        font-size: 22px;
+      }
+
+      .meta {
+        font-size: 14px;
+        color: #777;
+      }
+
+      .likes {
+        margin-top: 10px;
+        font-size: 16px;
+        color: #444;
+      }
+
+      .likes button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 18px;
+        margin-right: 10px;
+      }
+
+      .read-more {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 8px 12px;
+        background: #1e88e5;
+        color: #fff;
+        border-radius: 5px;
+        text-decoration: none;
+      }
+
+      .read-more:hover {
+        background: #1565c0;
+      }
+    </style>
+  </head>
+  <body>
+    {% csrf_token %}
+    <header>
+      <h1>Новости IT — Habr</h1>
+    </header>
+
+    <div class="container">
+      {% for article in articles %}
+      <div class="article">
+        <h2>{{ article.title }}</h2>
+        <div class="meta">
+          Автор: {{ article.author.username }} | Категория: {% if article.category %}{{ article.category.name }}{% else %}Без категории{% endif %} | {{ article.created_at|date:"d.m.Y" }}
+        </div>
+
+        {% if article.image %}
+        <img src="{{ article.image.url }}" alt="{{ article.title }}" />
+        {% endif %}
+
+        <p>{{ article.content|truncatechars:50 }}</p>
+
+        <div class="likes">
+          <button class="like-btn" data-id="{{ article.id }}">👍</button>
+          <span id="like-count-{{ article.id }}">{{ article.likes }}</span>
+
+          <button class="dislike-btn" data-id="{{ article.id }}">👎</button>
+          <span id="dislike-count-{{ article.id }}">{{ article.dislikes }}</span>
+        </div>
+
+        <a href="{% url 'habr_app:detail' article.id %}" class="read-more">Читать далее</a>
+      </div>
+      {% empty %}
+      <p>Пока нет статей 😢</p>
+      {% endfor %}
+    </div>
+
+    <script>
+      document.querySelectorAll(".like-btn, .dislike-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          const id = e.target.dataset.id;
+          const isLike = e.target.classList.contains("like-btn");
+          const url = isLike
+            ? '{% url "habr_app:like_article" 0 %}'.replace("0", id)
+            : '{% url "habr_app:dislike_article" 0 %}'.replace("0", id);
+
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": document.querySelector(
+                "[name=csrfmiddlewaretoken]"
+              ).value,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({}),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              document.getElementById(`like-count-${id}`).textContent =
+                data.likes;
+              document.getElementById(`dislike-count-${id}`).textContent =
+                data.dislikes;
+            }
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
